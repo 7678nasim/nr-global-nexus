@@ -6,19 +6,33 @@ import * as Icons from "lucide-react";
 
 const IMG = {
   Healthcare: "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80",
-  Ayurveda: "https://images.unsplash.com/photo-1611073615452-04dba8af1d35?w=800&q=80",
-  Education: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80",
+
+  Ayurveda: "/images/industries/ayurveda.jpg",
+
+  Education: "/images/industries/education.jpg",
+
   "Real Estate": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80",
+
   "E-Commerce": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80",
+
   Finance: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+
   Banking: "https://images.unsplash.com/photo-1601597111158-2fceff292cdc?w=800&q=80",
+
   Insurance: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&q=80",
+
   "IT & Technology": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80",
+
   Logistics: "https://images.unsplash.com/photo-1605745341112-85968b19335b?w=800&q=80",
-  Telecommunications: "https://images.unsplash.com/photo-1611784728558-6a7645e72a04?w=800&q=80",
+
+  Telecommunications: "/images/industries/telecommunications.jpg",
+
   Startups: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&q=80",
+
   SMEs: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&q=80",
+
   Agencies: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&q=80",
+
   "Professional Services": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80",
 };
 
