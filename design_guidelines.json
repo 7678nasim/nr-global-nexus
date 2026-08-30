@@ -1,0 +1,108 @@
+{
+  "theme": "LIGHT",
+  "archetype": "4",
+  "archetype_name": "Swiss & High-Contrast with Luxury Deep Blue elements",
+  "brand": {
+    "name": "NR Global Nexus",
+    "tagline": "Connecting Businesses. Accelerating Growth."
+  },
+  "typography": {
+    "headings": {
+      "fontFamily": "Cabinet Grotesk",
+      "fallback": "sans-serif",
+      "style": "Authoritative, tight tracking, crisp.",
+      "weights": ["600", "800"]
+    },
+    "body": {
+      "fontFamily": "IBM Plex Sans",
+      "fallback": "sans-serif",
+      "style": "Technical, highly legible, professional.",
+      "weights": ["400", "500"]
+    },
+    "hierarchy_rules": "Tight line-height for headings (leading-none), tracking-tight for H1/H2. H1 max text-5xl md:text-6xl. Subtitles should be text-lg or text-xl in IBM Plex Sans."
+  },
+  "colors": {
+    "primary": {
+      "name": "Obsidian Navy",
+      "hex": "#0A192F",
+      "tw_class": "bg-[#0A192F]",
+      "usage": "Main text, Hero backgrounds, Footer, emphasis"
+    },
+    "secondary": {
+      "name": "Royal Cobalt",
+      "hex": "#0A58CA",
+      "tw_class": "bg-[#0A58CA]",
+      "usage": "Primary buttons, icons, highlights, active states"
+    },
+    "accent": {
+      "name": "Silver Slate",
+      "hex": "#E2E8F0",
+      "tw_class": "bg-[#E2E8F0]",
+      "usage": "Subtle borders, secondary button backgrounds, light backgrounds"
+    },
+    "background": {
+      "primary": "#FFFFFF",
+      "secondary": "#F8F9FA",
+      "tertiary": "#0A192F"
+    },
+    "rules": "High contrast. No muddy gradients. Text must pass APCA contrast. Pure white or silver backgrounds with deep navy text, or Deep Navy backgrounds with white text. Royal Cobalt strictly for interaction and accents."
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing Philosophy. Bento grid for data, deep asymmetrical overlapping for imagery.",
+    "container_padding": "p-8 to p-12 for inner cards",
+    "section_spacing": "py-24 to py-32 for main sections",
+    "grid_modes": {
+      "marketing": "Asymmetrical Grid. grid-cols-1 md:grid-cols-12 gap-8.",
+      "data": "Control Room Grid for dashboards/stats. Strict alignment. gap-4 or gap-6."
+    }
+  },
+  "surface_strategies": {
+    "header": "Crystal Glassmorphism (backdrop-blur-xl bg-white/70 or bg-[#0A192F]/80), 1px bottom border border-slate-200. Sticky top with z-50.",
+    "cards": "Flat solid backgrounds. 1px border-slate-200. Subtle shadow-sm on hover with -translate-y-1. No heavy shadows.",
+    "buttons": "Sharp or slightly rounded (rounded-md). Royal Cobalt background with pure white text. Hover states shift to darker cobalt (hover:bg-[#0047AB]).",
+    "grid_borders": "Use border-collapse style layouts for Industries and Services grids to give a technical/consulting feel."
+  },
+  "components": {
+    "icons": "lucide-react (Default), minimal 1.5px stroke.",
+    "charts": "recharts or shadcn/ui charts for any data visualization.",
+    "animations": "Subtle framer-motion fades (opacity/y-axis). No bouncy effects. Professional and smooth.",
+    "testing": "All interactive elements MUST have data-testid attribute.",
+    "forms": "Use Shadcn Form, Input, Select, Textarea. Avoid native HTML inputs."
+  },
+  "media": {
+    "logo": {
+      "type": "svg_instructions",
+      "instruction": "Do not use a placeholder image URL for the logo. Create a custom inline SVG logo using initials 'NR'. Style it as a minimalist, Fortune 500 premium icon in Deep Blue and Royal Blue."
+    },
+    "hero_image": {
+      "url": "https://images.unsplash.com/photo-1582647509711-c8aa8a8bda71?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBnbGFzcyUyMG9mZmljZSUyMHNreXNjcmFwZXIlMjBibHVlfGVufDB8fHx8MTc4MTI5MjY5Mnww&ixlib=rb-4.1.0&q=85",
+      "description": "Blue glass walled high rise building - use as hero background with Deep Blue gradient overlay (bg-black/40 or bg-[#0A192F]/60)."
+    },
+    "about_image": {
+      "url": "https://images.pexels.com/photos/12903168/pexels-photo-12903168.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Professional team collaborating on a project in a well-lit office space."
+    },
+    "services_bg": {
+      "url": "https://images.unsplash.com/photo-1750969185331-e03829f72c7d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGRpZ2l0YWwlMjBuZXR3b3JrJTIwYmx1ZXxlbnwwfHx8fDE3ODEyOTI2OTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract blue lines and dots on black background - use for AI / Tech / Digital Innovation sections."
+    },
+    "industries": {
+      "healthcare": "https://images.unsplash.com/photo-1504439468489-c8920d796a29?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwzfHxoZWFsdGhjYXJlJTIwdGVjaG5vbG9neSUyMGJsdWV8ZW58MHx8fHwxNzgxMjkyNzAzfDA&ixlib=rb-4.1.0&q=85",
+      "logistics": "https://images.unsplash.com/photo-1605745341112-85968b19335b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwzfHxnbG9iYWwlMjBsb2dpc3RpY3MlMjBzaGlwcGluZyUyMGNhcmdvfGVufDB8fHx8MTc4MTI5MjcwM3ww&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "pages_structure": {
+    "Home": ["Hero Section with CTAs and Stats", "About Us excerpt", "Services Grid (6 categories)", "Industries Bento Grid", "Why Choose Us", "Case Studies", "Testimonials Carousel", "Newsletter", "Footer"],
+    "Services": "Detailed grid/list of BPO, Sales Outsourcing, Recruitment, Digital Marketing, AI Solutions, Business Consulting",
+    "Industries Served": "Detailed views for Healthcare, Real Estate, E-commerce, Finance, Education, IT, Logistics, Telecom",
+    "Careers": "Job listings with Shadcn forms for resume upload",
+    "Contact Us": "Multi-form tabs (Request Proposal, Project Inquiry, Recruitment, Partnership, Schedule Consultation) using Shadcn Tabs + Form. Embedded Maps and WhatsApp.",
+    "Blog": "CMS layout with search, category filters, and article cards.",
+    "Global Elements": "Floating WhatsApp button. AI Chatbot widget bottom-right. Sticky navigation."
+  },
+  "contact_info": {
+    "whatsapp": "+919933351374",
+    "email": "info@nrglobalnexus.com",
+    "address": "Hakimpara, Siliguri, West Bengal, India"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "summary": "End-to-end test of NR Global Nexus full-stack app. 22/22 backend pytest cases passed including CRUD, leads (all 7 form types), newsletter, careers multipart, blog seeded posts, case studies, testimonials, stats, chat SSE streaming + [LEAD_JSON] lead capture. Frontend smoke tested across Home, Services, Industries, CaseStudies, Blog (list/search/category/detail), Careers (resume upload), Contact (deep link, form submit, FAQ, Google Maps), Newsletter footer, WhatsApp link, and Chatbot streaming Claude responses.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Chatbot floating toggle",
+        "issue": "Chatbot toggle button at bottom-right is overlapped by the Emergent preview badge (#emergent-badge) so a normal click is intercepted by the badge link. elementFromPoint at toggle centre returns the Emergent badge. Direct JS click on toggle works fine and panel opens, streams Claude reply correctly. In production (no Emergent badge) this would not occur, but for the preview env users may struggle to open the chatbot.",
+        "selector": "[data-testid=\"chatbot-toggle\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Services page",
+        "issues": ["Service items use data-testid pattern `service-section-{slug}` instead of the spec's `service-card-{slug}` — minor naming inconsistency. All 6 services render and anchor scroll (/services#bpo-outsourcing) works."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Move the Chatbot floating toggle to a position that doesn't collide with the Emergent preview badge (e.g., shift left by ~80px on the bottom-right, or place it on the bottom-left), OR raise its z-index above 2147483647 so it remains clickable in preview environments.",
+    "Align Services page testids with spec: rename `service-section-{slug}` to `service-card-{slug}` so frontend matches the contract."
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~500 lines and combines all endpoints + seed data + system prompt. Consider splitting into routers (blog.py, leads.py, careers.py, chat.py) for maintainability.",
+    "Chat endpoint replays full prior history by calling chat.send_message for each prior user turn synchronously before streaming — this duplicates LLM calls and inflates latency/cost. Better: pass conversation history directly to the model.",
+    "BlogPost create endpoint can produce a slug like `test-post-xxxxxx` but doesn't validate length/uniqueness deeply; acceptable for now.",
+    "Logger is initialised after it is referenced inside chat_endpoint coroutine — works at runtime because logger is module-level by the time the coroutine runs, but it's fragile. Move `logging.basicConfig`/`logger = logging.getLogger(...)` near the top of the module.",
+    "career_apply stores resume_b64 in DB; consider object storage for production scale.",
+    "CORS allow_credentials=True combined with allow_origins='*' is unsafe (browsers reject anyway). Restrict origins in prod."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created)"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "~95%"
+  },
+  "test_credentials": "none required (no auth on this app)",
+  "seed_data_creation": "Tests create TEST_ prefixed blog posts and leads; CRUD test self-cleans the blog post via DELETE.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend is fully covered by /app/backend/tests/backend_test.py — 22 tests, run via `pytest /app/backend/tests/backend_test.py -v`. SSE chat test uses httpx streaming and consumes data: lines. Lead capture test sends a message with explicit contact details so the assistant emits [LEAD_JSON]. If you re-run, the Emergent badge in the preview env still overlaps the chatbot toggle — use a direct JS click in Playwright: `await page.evaluate(\"document.querySelector('[data-testid=chatbot-toggle]').click()\")`.",
+  "rca of the issue": "Chatbot panel not opening on UI click — RCA: the global Emergent preview badge anchor (#emergent-badge, fixed bottom-right) renders above [data-testid='chatbot-toggle'] at the same coordinates, so the click hit-tests to the badge link. Reproduction: open homepage, evaluate document.elementFromPoint at the centre of the chatbot toggle — returns the emergent-badge anchor. Mitigation: raise chatbot toggle z-index OR move its position so it no longer collides with the Emergent badge."
+}

@@ -1,0 +1,53 @@
+{
+  "summary": "Full retest of NR Global Nexus rebrand. 25/25 backend pytest cases pass — including new expanded lead fields (designation/country/industry/monthly_budget), expanded careers application fields (current_location/qualification/current_salary/expected_salary/preferred_role), 8 careers openings (telecaller/web-dev/ayur-consult present, ai-engineer removed), 4 case studies w/ ayurveda-distribution, 5 testimonials w/ Sattva Ayurveda, and chatbot SSE + [LEAD_JSON] capture writing expanded fields. Frontend retested on Home, Services, Industries, About, Contact, Careers, Partnership — every spec'd data-testid present, partnership form persists a lead (form_type=partnership) via /api/leads, careers expanded form submits successfully.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Footer (global)",
+        "issues": [
+          "Footer tagline copy still reads 'Premium BPO, AI Solutions, Recruitment, Sales Outsourcing, Digital Marketing & Business Consulting...' — the rebrand removed 'AI Solutions' from the 8 services. This stale copy contradicts the new positioning (Outsourcing, Sales & Growth). Update the descriptive paragraph in Footer.jsx."
+        ]
+      },
+      {
+        "screen": "Industries page",
+        "issues": [
+          "data-testid for IT & Technology card resolves to 'industry-card-it-&-technology' (or similar) instead of 'industry-card-it-technology'. The slugify likely keeps '&' or strips it unexpectedly. The card itself renders fine; only the testid slug differs from convention. Not blocking, but worth normalising the slug."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Update Footer.jsx description: drop 'AI Solutions' from the brand-line copy to match the rebrand (services list itself already updated).",
+    "Optional: Normalise the slug used for IT & Technology in Industries (testid 'industry-card-it-technology') for consistency with the spec."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~540 lines combining endpoints + seeds + system prompt. Recommend extracting blog, leads, careers and chat into separate routers.",
+    "Chat endpoint still replays prior turns by calling chat.send_message synchronously before streaming — doubles latency/cost. Pass history as system context instead.",
+    "Logger is module-initialised AFTER it's referenced inside chat_endpoint — works because the coroutine runs later, but fragile. Move logging.basicConfig() and logger = logging.getLogger(...) near the top.",
+    "Storing resume_b64 in MongoDB scales poorly — move to object storage (S3/GCS) when volume grows.",
+    "CORS allow_credentials=True with allow_origins='*' is unsafe in production; restrict origins via env."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (expanded: new tests for 8 openings/4 case studies/5 testimonials/expanded careers fields/expanded lead fields/chat lead capture w/ expanded fields)"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25)",
+    "frontend": "100% on every spec'd flow (1 stale-copy design issue in Footer)"
+  },
+  "test_credentials": "none required (no auth on this app)",
+  "seed_data_creation": "Tests create TEST_ prefixed blog posts (self-cleaned), leads, careers applications, and chatbot leads. Frontend partnership-form submission also creates one real lead.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression: pytest /app/backend/tests/backend_test.py -v (25 tests, ~21s). Chatbot toggle still overlaps Emergent preview badge in this preview env even after z-9999 fix because the badge anchor sits at extreme bottom-right with very high z-index — use page.evaluate(\"document.querySelector('[data-testid=chatbot-toggle]').click()\") if you need to open the panel. The Partnership form submits to /api/leads with form_type='partnership' and service=<partner_type>; verified end-to-end. Careers form is multipart and posts to /api/careers/apply with the 5 new fields.",
+  "rca of the issue": "No new functional issues to RCA. Only a content-copy mismatch in Footer.jsx where the brand descriptor still mentions 'AI Solutions', which is out of scope for the rebrand. Reproduction: visit any page footer; the small paragraph under the logo reads 'Premium BPO, AI Solutions, Recruitment, ...'. Mitigation: edit Footer.jsx descriptor to e.g., 'Premium BPO, Project Outsourcing, Recruitment, Lead Generation, Digital Marketing & Business Consulting — engineered to scale ambitious businesses globally.'"
+}

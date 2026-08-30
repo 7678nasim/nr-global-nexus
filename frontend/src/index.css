@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cabinet Grotesk + IBM Plex Sans */
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --nx-navy: #0A192F;
+  --nx-navy-2: #0F2447;
+  --nx-cobalt: #0A58CA;
+  --nx-cobalt-2: #0047AB;
+  --nx-silver: #E2E8F0;
+  --nx-mist: #F8F9FA;
+  --nx-line: #E5EAF2;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #FFFFFF;
+  color: var(--nx-navy);
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Cabinet Grotesk', 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 217 50% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 217 50% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 50% 11%;
+    --primary: 217 50% 11%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 217 50% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 217 91% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 42%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* --- Custom Utilities --- */
+.nx-container { max-width: 1280px; margin-left: auto; margin-right: auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+@media (min-width: 768px) { .nx-container { padding-left: 2rem; padding-right: 2rem; } }
+
+.nx-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(10,25,47,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10,25,47,0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.nx-dot-bg {
+  background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.nx-noise::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.nx-glass {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--nx-line);
+}
+
+.nx-glass-dark {
+  background: rgba(10,25,47,0.78);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.nx-btn-primary {
+  background: var(--nx-cobalt);
+  color: #fff;
+  transition: all 200ms ease;
+}
+.nx-btn-primary:hover { background: var(--nx-cobalt-2); transform: translateY(-1px); }
+
+.nx-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--nx-navy);
+  color: var(--nx-navy);
+  transition: all 200ms ease;
+}
+.nx-btn-ghost:hover { background: var(--nx-navy); color: #fff; }
+
+.nx-card {
+  background: #fff;
+  border: 1px solid var(--nx-line);
+  transition: transform 250ms ease, box-shadow 250ms ease, border-color 250ms ease;
+}
+.nx-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -22px rgba(10,25,47,0.18);
+  border-color: rgba(10,88,202,0.35);
+}
+
+.nx-pill {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0.8rem; border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  background: rgba(10,88,202,0.08);
+  color: var(--nx-cobalt);
+  border: 1px solid rgba(10,88,202,0.18);
+}
+
+.nx-pill-light {
+  background: rgba(255,255,255,0.08);
+  color: #cfe1ff;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.nx-divider { height: 1px; width: 100%; background: var(--nx-line); }
+
+.nx-stat-num { font-family: 'Cabinet Grotesk', sans-serif; font-weight: 800; line-height: 1; letter-spacing: -0.04em; }
+
+/* Marquee */
+@keyframes nx-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.nx-marquee { animation: nx-marquee 36s linear infinite; }
+
+/* Scroll reveal fallback */
+.nx-fade-in { opacity: 0; transform: translateY(12px); animation: nxFade .8s ease forwards; }
+@keyframes nxFade { to { opacity: 1; transform: none; } }
+
+/* Prose for blog */
+.nx-prose { color: #1f2a3a; line-height: 1.75; }
+.nx-prose h2 { font-family: 'Cabinet Grotesk', sans-serif; font-size: 1.75rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--nx-navy); }
+.nx-prose h3 { font-family: 'Cabinet Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--nx-navy); }
+.nx-prose p { margin: 0 0 1rem; }
+.nx-prose ul, .nx-prose ol { margin: 0 0 1rem 1.25rem; }
+.nx-prose li { margin-bottom: 0.4rem; }
+.nx-prose strong { color: var(--nx-navy); font-weight: 600; }
+.nx-prose a { color: var(--nx-cobalt); text-decoration: underline; }
+
+/* Hide scrollbar for marquee */
+.nx-hide-scrollbar::-webkit-scrollbar { display: none; }
+.nx-hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

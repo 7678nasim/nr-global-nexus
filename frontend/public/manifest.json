@@ -1,0 +1,14 @@
+{
+  "short_name": "NR Global Nexus",
+  "name": "NR Global Nexus | BPO Outsourcing, AI Solutions, Recruitment & Digital Marketing",
+  "description": "NR Global Nexus provides BPO outsourcing, recruitment, AI solutions, sales outsourcing, digital marketing, and business consulting services to help businesses scale globally.",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "16x16 32x32 48x48", "type": "image/x-icon" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0A192F"
+}
