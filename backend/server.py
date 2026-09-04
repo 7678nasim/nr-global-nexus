@@ -1,9 +1,10 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Header, Request
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Header, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse, Response, PlainTextResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import asyncio
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
@@ -13,6 +14,9 @@ from datetime import datetime, timezone
 import base64
 import json
 import re
+import smtplib
+import secrets
+from email.message import EmailMessage
 
 from google import genai
 from google.genai import types
@@ -32,6 +36,36 @@ EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
 
+# Optional SMTP notifications. The admin dashboard remains the source of truth.
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+NOTIFY_FROM = os.environ.get("NOTIFY_FROM") or SMTP_USER
+NOTIFY_TO = [x.strip() for x in os.environ.get("NOTIFY_TO", "").split(",") if x.strip()]
+
+def _email_enabled() -> bool:
+    return bool(SMTP_USER and SMTP_PASSWORD and NOTIFY_FROM and NOTIFY_TO)
+
+def _send_email_sync(subject: str, body: str, reply_to: str | None = None):
+    if not _email_enabled():
+        return
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = NOTIFY_FROM
+    msg["To"] = ", ".join(NOTIFY_TO)
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(body)
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
+        smtp.starttls()
+        smtp.login(SMTP_USER, SMTP_PASSWORD)
+        smtp.send_message(msg)
+
+def queue_email(background_tasks: BackgroundTasks, subject: str, body: str, reply_to: str | None = None):
+    if _email_enabled():
+        background_tasks.add_task(_send_email_sync, subject, body, reply_to)
+
 app = FastAPI(title="NR Global Nexus API")
 api_router = APIRouter(prefix="/api")
 
@@ -46,6 +80,10 @@ def slugify(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s-]", "", text)
     text = re.sub(r"[\s-]+", "-", text)
     return text.strip("-")
+
+
+def title_case(value: str) -> str:
+    return value.replace("_", " ").replace("-", " ").title()
 
 
 # ----------------- Models -----------------
@@ -91,9 +129,12 @@ class CareerApplicationCreate(BaseModel):
     cover_letter: Optional[str] = None
     resume_filename: Optional[str] = None
     resume_b64: Optional[str] = None
+    invoice_filename: Optional[str] = None
+    invoice_b64: Optional[str] = None
 
 
 class CareerApplication(CareerApplicationCreate):
+    status: Literal["new", "reviewing", "shortlisted", "interview", "rejected", "hired"] = "new"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = Field(default_factory=now_iso)
 
@@ -126,14 +167,21 @@ class ChatRequest(BaseModel):
 
 # ----------------- Lead Endpoints -----------------
 @api_router.post("/leads", response_model=Lead)
-async def create_lead(payload: LeadCreate):
+async def create_lead(payload: LeadCreate, background_tasks: BackgroundTasks):
     lead = Lead(**payload.model_dump())
     await db.leads.insert_one(lead.model_dump())
+    queue_email(
+        background_tasks,
+        f"New {title_case(lead.form_type)} from {lead.name}",
+        "New website inquiry\n\n" + json.dumps(lead.model_dump(), indent=2),
+        lead.email,
+    )
     return lead
 
 
-@api_router.get("/leads", response_model=List[Lead])
-async def list_leads(form_type: Optional[str] = None, limit: int = 200):
+@api_router.get("/leads", response_model=List[Lead], include_in_schema=False)
+async def list_leads(x_admin_token: Optional[str] = Header(None), form_type: Optional[str] = None, limit: int = 200):
+    _require_admin(x_admin_token)
     q = {}
     if form_type:
         q["form_type"] = form_type
@@ -143,7 +191,7 @@ async def list_leads(form_type: Optional[str] = None, limit: int = 200):
 
 # ----------------- Newsletter -----------------
 @api_router.post("/newsletter")
-async def newsletter_subscribe(payload: NewsletterCreate):
+async def newsletter_subscribe(payload: NewsletterCreate, background_tasks: BackgroundTasks):
     existing = await db.newsletter.find_one({"email": payload.email})
     if existing:
         return {"message": "Already subscribed", "email": payload.email}
@@ -153,12 +201,14 @@ async def newsletter_subscribe(payload: NewsletterCreate):
         "created_at": now_iso(),
     }
     await db.newsletter.insert_one(doc)
+    queue_email(background_tasks, "New newsletter subscriber", f"New newsletter subscription: {payload.email}", payload.email)
     return {"message": "Subscribed", "email": payload.email}
 
 
 # ----------------- Careers -----------------
 @api_router.post("/careers/apply", response_model=CareerApplication)
 async def career_apply(
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(""),
@@ -171,15 +221,28 @@ async def career_apply(
     preferred_role: str = Form(""),
     cover_letter: str = Form(""),
     resume: Optional[UploadFile] = File(None),
+    invoice: Optional[UploadFile] = File(None),
 ):
+
     resume_b64 = None
     resume_filename = None
+
     if resume is not None:
         content = await resume.read()
         if len(content) > 5 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="Resume exceeds 5MB limit")
         resume_b64 = base64.b64encode(content).decode("utf-8")
         resume_filename = resume.filename
+
+    invoice_b64 = None
+    invoice_filename = None
+
+    if invoice is not None:
+        invoice_content = await invoice.read()
+        if len(invoice_content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Invoice exceeds 5MB limit")
+        invoice_b64 = base64.b64encode(invoice_content).decode("utf-8")
+        invoice_filename = invoice.filename
 
     app_data = CareerApplication(
         name=name,
@@ -195,16 +258,45 @@ async def career_apply(
         cover_letter=cover_letter or None,
         resume_filename=resume_filename,
         resume_b64=resume_b64,
+        invoice_filename=invoice_filename,
+        invoice_b64=invoice_b64,
+        status="new",
     )
     await db.career_applications.insert_one(app_data.model_dump())
+
+    queue_email(
+        background_tasks,
+        f"New career application — {position}",
+        "New candidate application\n\n" + json.dumps(
+            {
+                k: v
+                for k, v in app_data.model_dump().items()
+                if k not in {"resume_b64", "invoice_b64"}
+            },
+            indent=2
+        ),
+        email,
+    )
+
     safe = app_data.model_dump()
     safe.pop("resume_b64", None)
-    return CareerApplication(**{**safe, "resume_b64": None})
+    safe.pop("invoice_b64", None)
 
+    return CareerApplication(
+        **{
+            **safe,
+            "resume_b64": None,
+            "invoice_b64": None,
+        }
+    )
 
-@api_router.get("/careers/applications")
-async def list_applications(limit: int = 100):
-    cursor = db.career_applications.find({}, {"_id": 0, "resume_b64": 0}).sort("created_at", -1).limit(limit)
+@api_router.get("/careers/applications", include_in_schema=False)
+async def list_applications(x_admin_token: Optional[str] = Header(None), limit: int = 100):
+    _require_admin(x_admin_token)
+    cursor = db.career_applications.find(
+    {},
+    {"_id": 0, "resume_b64": 0, "invoice_b64": 0}
+).sort("created_at", -1).limit(limit)
     return await cursor.to_list(limit)
 
 
@@ -246,7 +338,7 @@ async def blog_categories():
 
 @api_router.get("/blog/{slug}")
 async def get_blog(slug: str):
-    post = await db.blog.find_one({"slug": slug}, {"_id": 0})
+    post = await db.blog.find_one({"slug": slug, "published": True}, {"_id": 0})
     if not post:
         raise HTTPException(404, "Post not found")
     related_cursor = db.blog.find(
@@ -258,7 +350,8 @@ async def get_blog(slug: str):
 
 
 @api_router.post("/blog", response_model=BlogPost)
-async def create_blog(payload: BlogPostCreate):
+async def create_blog(payload: BlogPostCreate, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
     slug = slugify(payload.title)
     existing = await db.blog.find_one({"slug": slug})
     if existing:
@@ -272,7 +365,8 @@ async def create_blog(payload: BlogPostCreate):
 
 
 @api_router.put("/blog/{slug}")
-async def update_blog(slug: str, payload: BlogPostCreate):
+async def update_blog(slug: str, payload: BlogPostCreate, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
     update = payload.model_dump()
     update["updated_at"] = now_iso()
     result = await db.blog.update_one({"slug": slug}, {"$set": update})
@@ -282,7 +376,8 @@ async def update_blog(slug: str, payload: BlogPostCreate):
 
 
 @api_router.delete("/blog/{slug}")
-async def delete_blog(slug: str):
+async def delete_blog(slug: str, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
     result = await db.blog.delete_one({"slug": slug})
     if result.deleted_count == 0:
         raise HTTPException(404, "Post not found")
@@ -442,6 +537,13 @@ async def chat_endpoint(payload: ChatRequest):
                 )
 
                 await db.leads.insert_one(lead_obj.model_dump())
+                if _email_enabled():
+                    await asyncio.to_thread(
+                        _send_email_sync,
+                        f"New Chatbot Lead — {lead_obj.name}",
+                        "NexusAI captured a new lead\n\n" + json.dumps(lead_obj.model_dump(), indent=2),
+                        lead_obj.email,
+                    )
 
                 yield f"data: {json.dumps({'lead_captured': True})}\n\n"
 
@@ -462,7 +564,8 @@ async def chat_endpoint(payload: ChatRequest):
 
 
 @api_router.get("/chat/{session_id}")
-async def chat_history(session_id: str):
+async def chat_history(session_id: str, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
     cursor = db.chat_messages.find({"session_id": session_id}, {"_id": 0}).sort("created_at", 1)
     return await cursor.to_list(500)
 
@@ -479,7 +582,7 @@ class AdminLoginPayload(BaseModel):
 
 @api_router.post("/admin/login")
 async def admin_login(payload: AdminLoginPayload):
-    if not ADMIN_PASSWORD or payload.password != ADMIN_PASSWORD:
+    if not ADMIN_PASSWORD or not secrets.compare_digest(payload.password, ADMIN_PASSWORD):
         raise HTTPException(401, "Invalid password")
     return {"token": ADMIN_TOKEN}
 
@@ -494,11 +597,37 @@ async def admin_leads(x_admin_token: Optional[str] = Header(None), form_type: Op
     return await cursor.to_list(limit)
 
 
+class LeadStatusPayload(BaseModel):
+    status: Literal["new", "contacted", "qualified", "closed"]
+
+
+@api_router.patch("/admin/leads/{lead_id}/status")
+async def admin_update_lead_status(lead_id: str, payload: LeadStatusPayload, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
+    result = await db.leads.update_one({"id": lead_id}, {"$set": {"status": payload.status, "updated_at": now_iso()}})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Lead not found")
+    return {"updated": True, "status": payload.status}
+
+
 @api_router.get("/admin/careers")
 async def admin_careers(x_admin_token: Optional[str] = Header(None), limit: int = 500):
     _require_admin(x_admin_token)
-    cursor = db.career_applications.find({}, {"_id": 0, "resume_b64": 0}).sort("created_at", -1).limit(limit)
+    cursor = db.career_applications.find({}, {"_id": 0, "resume_b64": 0, "invoice_b64": 0}).sort("created_at", -1).limit(limit)
     return await cursor.to_list(limit)
+
+
+class CareerStatusPayload(BaseModel):
+    status: Literal["new", "reviewing", "shortlisted", "interview", "rejected", "hired"]
+
+
+@api_router.patch("/admin/careers/{app_id}/status")
+async def admin_update_career_status(app_id: str, payload: CareerStatusPayload, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
+    result = await db.career_applications.update_one({"id": app_id}, {"$set": {"status": payload.status, "updated_at": now_iso()}})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Application not found")
+    return {"updated": True, "status": payload.status}
 
 
 @api_router.get("/admin/careers/{app_id}/resume")
@@ -516,6 +645,48 @@ async def admin_resume(app_id: str, x_admin_token: Optional[str] = Header(None))
         headers={"Content-Disposition": f'attachment; filename="{safe}"'},
     )
 
+@api_router.get("/admin/careers/{app_id}/invoice")
+async def admin_invoice(app_id: str, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
+    doc = await db.career_applications.find_one({"id": app_id})
+    if not doc or not doc.get("invoice_b64"):
+        raise HTTPException(404, "Invoice not found")
+
+    data = base64.b64decode(doc["invoice_b64"])
+    filename = doc.get("invoice_filename") or f"invoice-{app_id}.pdf"
+    safe = filename.replace('"', '')
+
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{safe}"'},
+    )
+
+@api_router.get("/admin/newsletter")
+async def admin_newsletter(x_admin_token: Optional[str] = Header(None), limit: int = 1000):
+    _require_admin(x_admin_token)
+    cursor = db.newsletter.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    return await cursor.to_list(limit)
+
+
+@api_router.get("/admin/chat/sessions")
+async def admin_chat_sessions(x_admin_token: Optional[str] = Header(None), limit: int = 200):
+    _require_admin(x_admin_token)
+    pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$group": {
+            "_id": "$session_id",
+            "last_message": {"$first": "$content"},
+            "last_role": {"$first": "$role"},
+            "last_at": {"$first": "$created_at"},
+            "message_count": {"$sum": 1},
+        }},
+        {"$sort": {"last_at": -1}},
+        {"$limit": limit},
+    ]
+    rows = await db.chat_messages.aggregate(pipeline).to_list(limit)
+    return [{"session_id": r["_id"], "last_message": r.get("last_message"), "last_role": r.get("last_role"), "last_at": r.get("last_at"), "message_count": r.get("message_count", 0)} for r in rows]
+
 
 @api_router.get("/admin/stats")
 async def admin_stats(x_admin_token: Optional[str] = Header(None)):
@@ -530,24 +701,42 @@ async def admin_stats(x_admin_token: Optional[str] = Header(None)):
         "chatbot_leads": await cnt(db.leads, {"form_type": "chatbot"}),
     }
     career_apps = await cnt(db.career_applications)
+    career_new = await cnt(db.career_applications, {"$or": [{"status": "new"}, {"status": {"$exists": False}}]})
     newsletter = await cnt(db.newsletter)
+    chat_sessions = len(await db.chat_messages.distinct("session_id"))
     blog_posts = await cnt(db.blog)
     recent = await db.leads.find({}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
     return {
         "leads_total": leads_total,
         **by_type,
         "career_apps": career_apps,
+        "career_new": career_new,
         "newsletter": newsletter,
+        "chat_sessions": chat_sessions,
         "blog_posts": blog_posts,
         "recent_leads": recent,
     }
 
 
-# Protect blog CRUD writes (read endpoints stay public)
-@api_router.post("/admin/blog", include_in_schema=False)
-async def admin_create_blog(payload: BlogPostCreate, x_admin_token: Optional[str] = Header(None)):
+# Admin-only blog detail supports drafts without exposing them publicly.
+@api_router.get("/admin/blog", include_in_schema=False)
+async def admin_list_blog(x_admin_token: Optional[str] = Header(None), limit: int = 200):
     _require_admin(x_admin_token)
-    return await create_blog(payload)
+    cursor = db.blog.find({}, {"_id": 0, "content": 0}).sort("created_at", -1).limit(limit)
+    return await cursor.to_list(limit)
+
+
+@api_router.get("/admin/blog/{slug}", include_in_schema=False)
+async def admin_get_blog(slug: str, x_admin_token: Optional[str] = Header(None)):
+    _require_admin(x_admin_token)
+    post = await db.blog.find_one({"slug": slug}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "Post not found")
+    related_cursor = db.blog.find(
+        {"category": post["category"], "slug": {"$ne": slug}},
+        {"_id": 0, "content": 0},
+    ).limit(3)
+    return {"post": post, "related": await related_cursor.to_list(3)}
 
 
 # ----------------- Callback request -----------------
@@ -559,7 +748,7 @@ class CallbackPayload(BaseModel):
 
 
 @api_router.post("/callback")
-async def request_callback(payload: CallbackPayload):
+async def request_callback(payload: CallbackPayload, background_tasks: BackgroundTasks):
     lead = Lead(
         name=payload.name,
         email=f"callback+{uuid.uuid4().hex[:8]}@nrglobalnexus.com",
@@ -569,6 +758,7 @@ async def request_callback(payload: CallbackPayload):
         source="instant-callback",
     )
     await db.leads.insert_one(lead.model_dump())
+    queue_email(background_tasks, f"Callback request — {payload.name}", "New callback request\n\n" + json.dumps(lead.model_dump(), indent=2), payload.phone)
     return {"ok": True, "id": lead.id}
 
 

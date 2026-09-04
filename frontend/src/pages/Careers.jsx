@@ -38,6 +38,7 @@ const Careers = () => {
   const [openings, setOpenings] = useState([]);
   const [form, setForm] = useState(Object.fromEntries(FIELDS.map(f => [f.k, ""]).concat([["cover_letter", ""]])));
   const [file, setFile] = useState(null);
+  const [invoiceFile, setInvoiceFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useSEO({ title: "Careers | NR Global Nexus", description: "Join NR Global Nexus — 500+ specialists across BPO, sales, recruitment, marketing and tech. Remote and hybrid roles across India." });
@@ -51,10 +52,12 @@ const Careers = () => {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (file) fd.append("resume", file);
+      if (invoiceFile) fd.append("invoice", invoiceFile);
       await api.post("/careers/apply", fd, { headers: { "Content-Type": "multipart/form-data" } });
       toast.success("Application submitted. Our HR team will reach out soon!");
       setForm(Object.fromEntries(FIELDS.map(f => [f.k, ""]).concat([["cover_letter", ""]])));
       setFile(null);
+      setInvoiceFile(null);
     } catch (err) {
       toast.error("Could not submit. Please try again.");
     } finally {
@@ -120,6 +123,21 @@ const Careers = () => {
                 <span className="text-sm text-[#0A192F]/75">{file ? file.name : "Upload Resume (PDF/DOCX · max 5MB)"}</span>
                 <input type="file" hidden accept=".pdf,.doc,.docx" data-testid="careers-resume" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </label>
+
+<label className="md:col-span-2 border border-dashed border-[var(--nx-line)] rounded-md p-4 flex items-center gap-3 cursor-pointer hover:border-[#0A58CA]/50">
+  <Upload size={16} className="text-[#0A58CA]" />
+  <span className="text-sm text-[#0A192F]/75">
+    {invoiceFile ? invoiceFile.name : "Upload Invoice (PDF/JPG/PNG · max 5MB)"}
+  </span>
+  <input
+    type="file"
+    hidden
+    accept=".pdf,.jpg,.jpeg,.png"
+    data-testid="careers-invoice"
+    onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
+  />
+</label>
+
             </div>
             <button type="submit" disabled={loading} data-testid="careers-submit" className="nx-btn-primary w-full mt-5 py-3 rounded-md text-sm font-medium">{loading ? "Submitting…" : "Submit Application"}</button>
             <p className="text-[11px] text-[#0A192F]/50 mt-2">By submitting, you agree to our NDA-aligned data processing policy.</p>

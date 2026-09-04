@@ -101,3 +101,13 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+## 2026-08-31 Admin / operations hardening update
+- Implemented secure admin-only access for lead listings, career application listings, chatbot history, and blog write operations.
+- Added admin newsletter subscriber endpoint and NexusAI conversation inbox endpoints.
+- Added lead and career application status update endpoints.
+- Added optional SMTP email notifications for leads, career applications, and newsletter subscriptions using environment variables (no paid email service required).
+- Added draft-safe admin blog listing/detail endpoints and kept unpublished blog content hidden from public detail routes.
+- Upgraded Admin Command Center navigation with Newsletter and NexusAI Inbox plus status controls.
+- Fixed the React SEO hook dependency warning in `frontend/src/lib/seo.js`.
+- Frontend production build: PASSED (`npm run build`). Backend syntax compile: PASSED (`python -m py_compile backend/server.py`).
+- Backend live integration testing is pending because the uploaded environment does not include the backend Python dependencies (`motor` missing in the execution container); the deployed Render backend must be retested after deployment.

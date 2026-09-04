@@ -60,6 +60,8 @@ const upsertJsonLd = (id, json) => {
  * Pass title, description, optional image, path, and jsonLd object/array.
  */
 export const useSEO = ({ title, description, image, path, jsonLd } = {}) => {
+  const jsonLdKey = JSON.stringify(jsonLd || null);
+
   useEffect(() => {
     const fullTitle = title || "NR Global Nexus | BPO Outsourcing, Sales & Growth Solutions";
     const desc = description || "NR Global Nexus provides BPO outsourcing, recruitment, project outsourcing, sales outsourcing, digital marketing and business consulting services to help businesses scale globally.";
@@ -84,13 +86,14 @@ export const useSEO = ({ title, description, image, path, jsonLd } = {}) => {
 
     setCanonical(url);
 
-    if (jsonLd) {
-      const arr = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+    const parsedJsonLd = JSON.parse(jsonLdKey);
+    if (parsedJsonLd) {
+      const arr = Array.isArray(parsedJsonLd) ? parsedJsonLd : [parsedJsonLd];
       // clear existing page-scoped json-ld
       document.head.querySelectorAll('script[data-jsonld^="page-"]').forEach((n) => n.remove());
       arr.forEach((j, i) => upsertJsonLd(`page-${i}`, j));
     }
-  }, [title, description, image, path, JSON.stringify(jsonLd || null)]);
+  }, [title, description, image, path, jsonLdKey]);
 };
 
 /**
